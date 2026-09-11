@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+.DS_Store
+
+# 本地运行产物（云端不需要，也避免和 Actions 提交打架）
+dashboard.html
+data/cron.log
+data/cron.err
+data/web.log
+data/web.err
+data/digest.log
+data/fundamentals_cache.json
+data/cashflow_cache.json
+data/metrics_latest.csv
+data/yf_cache/
+data/snapshot_*.json
+data/latest.json

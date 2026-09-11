@@ -1,0 +1,15 @@
+{
+  "pick": "EOG",
+  "since": "2026-09-11",
+  "challenger": null,
+  "challenger_days": 0,
+  "log": [
+    {
+      "date": "2026-09-11",
+      "from": null,
+      "to": "EOG",
+      "reason": "首次建仓: EOG 综合分 74.0"
+    }
+  ],
+  "last_run": "2026-09-11T10:31:02"
+}

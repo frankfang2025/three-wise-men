@@ -1,0 +1,72 @@
+name: 每日刷新
+
+on:
+  schedule:
+    # 22:30 UTC，美股收盘后（夏令时 18:30 ET / 冬令时 17:30 ET）
+    # = 北京时间次日 06:30
+    - cron: "30 22 * * 1-5"
+  workflow_dispatch:        # 允许在 Actions 页面手动点 Run workflow
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: 安装依赖
+        run: pip install -r requirements.txt
+
+      # 缓存基本面与现金流，避免每轮都把 93 只全拉一遍（更快，也更不容易被限流）
+      - name: 恢复数据缓存
+        uses: actions/cache@v4
+        with:
+          path: |
+            data/fundamentals_cache.json
+            data/cashflow_cache.json
+            data/yf_cache
+          key: yfdata-${{ github.run_id }}
+          restore-keys: yfdata-
+
+      - name: 跑引擎（失败重试 3 次）
+        run: |
+          for i in 1 2 3; do
+            echo "=== 第 $i 次尝试 ==="
+            if python run_daily.py; then
+              echo "成功"; exit 0
+            fi
+            echo "第 $i 次失败"
+            [ $i -lt 3 ] && sleep 90
+          done
+          echo "三次均失败"; exit 1
+
+      - name: 提交结果
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs data/state.json data/history.jsonl
+          if git diff --staged --quiet; then
+            echo "无变化，跳过提交"
+          else
+            PICK=$(python -c "import json;d=json.load(open('data/latest.json'));print(f\"{d['action']} {d['pick']}\")")
+            git commit -m "每日刷新: $PICK"
+            git push
+          fi
+
+      - name: 失败时输出诊断
+        if: failure()
+        run: |
+          echo "--- 最近一次快照 ---"
+          python -c "import json;d=json.load(open('data/latest.json'));print(d['date'],d['pick'],d['action'])" 2>&1 || echo "无快照"
