@@ -1,6 +1,23 @@
 # 三人共识选股 · Buffett × Dimon × Dalio
 
-> **位置注意**：本项目必须放在 `~/` 而不是 `~/Documents`。macOS 的 TCC 隐私保护
+## → https://frankfang2025.github.io/three-wise-men/
+
+**打开即看，不需要开终端、不需要 Mac 醒着。** 每个交易日美股收盘后由 GitHub Actions
+在云端跑完引擎，把结果提交回本仓库，Pages 自动更新页面。
+
+- 想立刻手动跑一次：[Actions → Run workflow](https://github.com/frankfang2025/three-wise-men/actions/workflows/daily.yml)，约 2 分钟
+- 机器可读结果：[`docs/data/latest.json`](https://frankfang2025.github.io/three-wise-men/data/latest.json)
+- 历次换股就是本仓库的 commit 历史（`每日刷新: SWITCH XXX`）
+
+> **云端与本地并存的注意事项**：仓库跟踪 `data/state.json` 和 `data/history.jsonl`
+> （持仓状态与换股记录）。如果本地也在跑每日任务，两边会各自改这两个文件，
+> `git pull` 时会冲突。建议二选一：既然云端已接管每日刷新，就关掉本地定时任务
+> `launchctl bootout gui/$(id -u)/com.threewisemen.daily`；
+> 本地若临时跑过，拉取前先 `git checkout data/` 丢弃本地改动。
+
+---
+
+> **本地部署的位置注意**：本项目必须放在 `~/` 而不是 `~/Documents`。macOS 的 TCC 隐私保护
 > 不允许 LaunchAgent 读取 `~/Documents`、`~/Desktop`、`~/Downloads` 里的文件内容
 > （实测：能 cd、能 ls、能写，但读文件内容返回 Operation not permitted，
 > 定时任务会以退出码 126 静默失败）。搬回去会立刻坏掉。
