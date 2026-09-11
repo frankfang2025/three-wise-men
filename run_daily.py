@@ -25,7 +25,7 @@ SWITCH_DAYS = 3
 def load_state():
     if os.path.exists(STATE):
         return json.load(open(STATE))
-    return {"pick": None, "since": None, "challenger": None, "challenger_days": 0, "log": []}
+    return {"pick": None, "since": None, "challenger": None, "challenger_dates": [], "log": []}
 
 
 def decide(state, ranked):
@@ -56,20 +56,24 @@ def decide(state, ranked):
     if top["ticker"] != cur:
         lead = top["composite"] - cur_row["composite"]
         if lead >= SWITCH_MARGIN:
-            days = state.get("challenger_days", 0) + 1 if state.get("challenger") == top["ticker"] else 1
+            # 按"不同日期"计数而非运行次数 —— 否则同一天手动连点几次刷新
+            # 就能凑满 3 次触发换股，防churn机制形同虚设
+            dates = set(state.get("challenger_dates", [])) if state.get("challenger") == top["ticker"] else set()
+            dates.add(today)
             state["challenger"] = top["ticker"]
-            state["challenger_days"] = days
-            if days >= SWITCH_DAYS:
+            state["challenger_dates"] = sorted(dates)
+            n = len(dates)
+            if n >= SWITCH_DAYS:
                 return top["ticker"], "SWITCH", (f"{top['ticker']} 综合分领先在任 {cur} "
-                                                 f"{lead:.1f} 分并已连续 {days} 日，触发换股")
-            return cur, "HOLD", (f"{top['ticker']} 领先 {lead:.1f} 分 (第 {days}/{SWITCH_DAYS} 日观察)，"
+                                                 f"{lead:.1f} 分，且已在 {n} 个不同交易日持续领先，触发换股")
+            return cur, "HOLD", (f"{top['ticker']} 领先 {lead:.1f} 分 (已观察 {n}/{SWITCH_DAYS} 个交易日)，"
                                  f"暂继续持有 {cur}")
         state["challenger"] = None
-        state["challenger_days"] = 0
+        state["challenger_dates"] = []
         return cur, "HOLD", f"{cur} 仍通过三人检验，领先者 {top['ticker']} 差距仅 {lead:.1f} 分，未达换股阈值"
 
     state["challenger"] = None
-    state["challenger_days"] = 0
+    state["challenger_dates"] = []
     return cur, "HOLD", f"{cur} 仍是三人共识下的第一名 (综合分 {cur_row['composite']})"
 
 
@@ -110,7 +114,7 @@ def main(full=False):
         state["pick"] = pick
         state["since"] = today
         state["challenger"] = None
-        state["challenger_days"] = 0
+        state["challenger_dates"] = []
         state.setdefault("log", []).append({"date": today, "from": prev, "to": pick, "reason": reason})
     state["last_run"] = dt.datetime.now().isoformat(timespec="seconds")
     json.dump(state, open(STATE, "w"), ensure_ascii=False, indent=2)

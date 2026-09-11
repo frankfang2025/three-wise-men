@@ -126,7 +126,9 @@ border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:12.5px;line-he
 无需任何本地程序。当前数据抓取于 <b>{snap['run_at'][:16].replace('T',' ')}</b>（UTC 时区的 runner 时钟）。
 <a href="https://github.com/{REPO}/actions/workflows/daily.yml" target="_blank"
  style="color:var(--b);text-decoration:none;font-weight:600">→ 立即手动跑一次</a>
-（跳转 GitHub，点 Run workflow，约 2 分钟后刷新本页）
+（<b>需先登录 GitHub</b>，否则页面上不会出现按钮；登录后在该页右上方找灰色的
+ <code style="background:var(--panel2);padding:1px 5px;border-radius:4px">Run workflow ▾</code>
+ 按钮，点开再点绿色 Run workflow，约 2 分钟后回来刷新本页）
  · <a href="https://github.com/{REPO}" target="_blank"
  style="color:var(--dim);text-decoration:none">源码</a>
  · <a href="data/latest.json" style="color:var(--dim);text-decoration:none">JSON</a></div>"""
