@@ -4,7 +4,7 @@
   python3 run_daily.py            日常刷新 (基本面走缓存, 价格/宏观实时)
   python3 run_daily.py --full     强制重拉全部基本面
 换股规则 (避免每天追分数导致来回换):
-  1) 在任持仓被任一人否决 -> 立即换 (硬性)
+  1) 在任持仓被任一人否决，且连续 2 个不同交易日成立 -> 换 (已不在候选池则立即换)
   2) 挑战者综合分领先在任 >= 5.0 分, 且连续 3 个交易日成立 -> 换
   3) 其余情况一律持有
 """
@@ -20,6 +20,7 @@ HIST = os.path.join(DATA, "history.jsonl")
 
 SWITCH_MARGIN = 5.0
 SWITCH_DAYS = 3
+VETO_DAYS = 2
 
 
 def load_state():
@@ -49,8 +50,16 @@ def decide(state, ranked):
         return top["ticker"], "SWITCH", f"{cur} 已不在候选池，换为 {top['ticker']}"
     if not cur_row["consensus"]:
         vs = cur_row["buffett"]["vetoes"] + cur_row["dimon"]["vetoes"] + cur_row["dalio"]["vetoes"]
-        return top["ticker"], "SWITCH", (f"在任 {cur} 被否决 ({'; '.join(vs[:2])})，"
-                                         f"立即换为 {top['ticker']}")
+        # 否决门是硬阈值 + 第三方数据(Yahoo) + 噪音回归，单日读数可能是数据抖动。
+        # 需在 2 个不同日期都被否决才换，避免一个脏数据点就把在任踢掉(与"防来回换"同理)。
+        vd = set(state.get("veto_dates", [])); vd.add(today)
+        state["veto_dates"] = sorted(vd)
+        if len(vd) < VETO_DAYS:
+            return cur, "HOLD", (f"⚠ 在任 {cur} 触发否决 ({'; '.join(vs[:2])})，"
+                                 f"已观察 {len(vd)}/{VETO_DAYS} 个交易日，确认后才换")
+        return top["ticker"], "SWITCH", (f"在任 {cur} 连续 {len(vd)} 个交易日被否决 ({'; '.join(vs[:2])})，"
+                                         f"换为 {top['ticker']}")
+    state["veto_dates"] = []
 
     # 规则2: 挑战者持续领先
     if top["ticker"] != cur:
@@ -115,6 +124,7 @@ def main(full=False):
         state["since"] = today
         state["challenger"] = None
         state["challenger_dates"] = []
+        state["veto_dates"] = []
         state.setdefault("log", []).append({"date": today, "from": prev, "to": pick, "reason": reason})
     state["last_run"] = dt.datetime.now().isoformat(timespec="seconds")
     json.dump(state, open(STATE, "w"), ensure_ascii=False, indent=2)

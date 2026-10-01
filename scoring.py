@@ -15,6 +15,22 @@ BUFFETT_EXCLUDE_INDUSTRY = [
 ]
 
 
+def _num(x):
+    """NaN/None 统一成 None —— pandas 行里缺失值是 NaN，`is None` 判不出来，
+    会让缺数据的标的(如银行的 EBITDA)被静默当成最差值处理。"""
+    if x is None:
+        return None
+    try:
+        return None if np.isnan(x) else float(x)
+    except (TypeError, ValueError):
+        return None
+
+
+def _is_fin(ind):
+    ind = (ind or "").lower()
+    return any(k in ind for k in ("insurance", "bank", "capital markets", "credit services"))
+
+
 def _ramp(x, lo, hi, out_lo, out_hi):
     """把 x 从 [lo,hi] 线性映射到 [out_lo,out_hi]，超出部分截断。"""
     if x is None or (isinstance(x, float) and np.isnan(x)):
@@ -31,8 +47,8 @@ def score_buffett(r, tag, mac):
     v, notes = [], []
     ten = mac["ten_year"] / 100.0
 
-    roe, nd, de = r.roe, r.nd_ebitda, r.debt_to_equity
-    fcfy, gm = r.fcf_yield, r.gross_margin
+    roe, nd, de = _num(r.roe), _num(r.nd_ebitda), _num(r.debt_to_equity)
+    fcfy, gm = _num(r.fcf_yield), _num(r.gross_margin)
     ind = r.industry if isinstance(r.industry, str) else ""
     ind = ind.lower()
 
@@ -54,13 +70,13 @@ def score_buffett(r, tag, mac):
         v.append(f"股东盈余收益率 {fcfy:.2%} 打不过 {mac['ten_year']:.2f}% 的无风险国债")
     # 他回避的是"没有成本优势的"大宗同质化行业 —— 用实测油价beta判断是否纯价格接受者
     ob = getattr(r, "oil_beta", None)
-    if ob is not None and ob > 0.80:
+    if ob is not None and ob > 0.60:
         v.append(f"实测油价beta {ob:.2f} —— 纯大宗价格接受者，利润由价格而非生意决定")
 
     # ---- 打分 ----
     s_roe = _ramp(roe, 0.12, 0.40, 8, 25)                       # 12%→及格, 25%+→喜诗糖果档
     if nd is None:
-        s_lev = 12.0
+        s_lev = 12.0                                             # 金融股无EBITDA口径: 给中性分，不当最差值
     elif nd <= 0:   s_lev = 20.0                                 # 净现金
     elif nd <= 1:   s_lev = 17.0
     elif nd <= 2:   s_lev = 13.0
@@ -72,7 +88,7 @@ def score_buffett(r, tag, mac):
     # 股东盈余的持久性: 他用5年滚动口径，萎缩中的现金流不配拿满分估值分
     tr, lva, pos = getattr(r,"fcf_trend",None), getattr(r,"fcf_vs_avg",None), getattr(r,"fcf_pos_years",None)
     if tr is not None:
-        s_val *= float(np.clip(1 + 0.45 * np.clip(tr, -0.6, 0.4), 0.55, 1.15))
+        s_val *= float(np.clip(1 + 0.45 * np.clip(tr, -0.6, 0.4), 0.55, 1.0))   # 增长不加分，只对萎缩扣分，保证分项不超上限30
         notes.append(f"股东盈余四年趋势 {tr:+.0%}/年" +
                      ("（萎缩中，估值分已按比例下调）" if tr < -0.05 else
                       "（增长中）" if tr > 0.05 else "（大致持平）"))
@@ -80,10 +96,13 @@ def score_buffett(r, tag, mac):
         notes.append(f"最新自由现金流仅为四年均值的 {lva:.0%} —— 当期收益率有高估之嫌")
     if pos is not None and pos < 3:
         v.append(f"近四年仅 {pos} 年自由现金流为正 —— 股东盈余不稳定")
-    s_pred = _ramp(-(r.max_dd_3y or -0.5), 0.15, 0.60, 10, 2) if r.max_dd_3y else 5
+    _dd = _num(r.max_dd_3y)
+    s_pred = _ramp(-(_dd or -0.5), 0.15, 0.60, 10, 2) if _dd else 5
     # 商品价格敏感度越高，未来10-20年经济特征越不可预测 -> 扣可预测性
+    # (原区间 0.15-0.80 在全池实测最大仅0.46，扣分与否决都形同虚设，
+    #  导致 E&P 这类典型价格接受者不被惩罚；区间按实测分布收紧)
     if ob is not None:
-        s_pred -= _ramp(ob, 0.15, 0.80, 0, 4)
+        s_pred -= _ramp(ob, 0.15, 0.50, 0, 6)
     s_pred = float(np.clip(s_pred, 0, 10))
     if ob is not None:
         notes.append(f"实测油价beta {ob:.2f}" + ("（成本优势型，非纯价格接受者）" if ob <= 0.5 else "（商品价格敏感）"))
@@ -121,7 +140,8 @@ def score_dimon(r, tag, mac):
     for a in tag["anti"]:
         v.append(DIMON_ANTI.get(a, a))
 
-    nd, pe, cr = r.nd_ebitda, r.trailing_pe, r.current_ratio
+    nd, pe, cr = _num(r.nd_ebitda), _num(r.trailing_pe), _num(r.current_ratio)
+    beta_, dd_ = _num(r.beta), _num(r.max_dd_3y)
     if nd is not None and nd > 4.0:
         v.append(f"净负债/EBITDA {nd:.1f}x —— 达不到'堡垒式资产负债表'")
     if pe is not None and pe > 30:
@@ -134,13 +154,14 @@ def score_dimon(r, tag, mac):
     s_theme = _ramp(raw, 0, 18, 0, 35)
     # 堡垒资产负债表
     s_bs = 0.0
-    s_bs += 15.0 if nd is None else (15 if nd <= 0 else _ramp(-nd, -4, 0, 2, 15))
+    # 无EBITDA口径(银行/保险): 给中性分而非满分或最差值
+    s_bs += 8.0 if nd is None else (15 if nd <= 0 else _ramp(-nd, -4, 0, 2, 15))
     s_bs += _ramp(cr, 0.6, 2.0, 2, 10) if cr else 5
     # 估值 vs 他的 23 倍警戒线
     s_val = _ramp(-(pe or 40), -30, -10, 0, 20)
     # 尾部韧性: 他要求按"股市跌50%、利率到8%"做压力测试
-    s_tail = _ramp(-(r.beta or 1.2), -1.5, -0.4, 0, 12)
-    s_tail += _ramp(-(r.max_dd_3y or -0.6), 0.15, 0.60, 8, 0) if r.max_dd_3y else 4
+    s_tail = _ramp(-(beta_ or 1.2), -1.5, -0.4, 0, 12)
+    s_tail += _ramp(-(dd_ or -0.6), 0.15, 0.60, 8, 0) if dd_ else 4
 
     notes.append("主题: " + ("/".join(tag["dimon"]) if tag["dimon"] else "无"))
     notes.append(f"PE {pe:.1f}x vs 他警戒的23x" if pe else "PE n/a")
@@ -164,21 +185,22 @@ def score_dalio(r, tag, mac):
     v, notes = [], []
     q = mac["quadrant_key"]
     real, infl_tag = tag["real"], tag["infl"]
-    ib = getattr(r, "infl_beta", None)
-    gb = getattr(r, "gold_beta", None)
-    rb = getattr(r, "rate_beta", None)
+    ib, gb, rb = _num(getattr(r, "infl_beta", None)), _num(getattr(r, "gold_beta", None)), _num(getattr(r, "rate_beta", None))
+    it, rt = _num(getattr(r, "infl_t", None)), _num(getattr(r, "rate_t", None))
+    sig_neg = lambda t: t is None or t < -2.0      # 负beta须统计显著(t<-2)才算证据；无t值(旧缓存)时沿用点估计
 
     W = mac.get("quadrant_weights") or {mac["quadrant_key"]: 1.0}
     infl_up = mac.get("infl_up_conf", 1.0 if "up" in q.split("_")[1] else 0.0)
 
     # ---- 否决门 ----
-    if real < 2 and (ib is None or ib < 0.3):
+    # 有定价权(infl>=2)的优质企业股权是 Dalio 认可的通胀资产，不因 real 低就一刀切
+    if real < 2 and infl_tag < 2 and (ib is None or ib < 0.3):
         v.append(f"既非实物/生产性资产(real={real})，实测通胀beta "
                  + (f"{ib:.2f} 也不具通胀对冲能力" if ib is not None else "亦缺失"))
-    if infl_up > 0.6 and ib is not None and ib < -0.2:
+    if infl_up > 0.6 and ib is not None and ib < -0.2 and sig_neg(it):
         v.append(f"通胀上行置信度 {infl_up:.0%}，但实测通胀beta {ib:.2f} 为负 —— 通胀上行时反而下跌")
     # 货币贬值期最忌名义债券型资产 (他称之为"坏资产")
-    if mac["debasement_z"] > 0.8 and rb is not None and rb < -0.05:
+    if mac["debasement_z"] > 0.8 and rb is not None and rb < -0.05 and sig_neg(rt):
         v.append(f"实测利率beta {rb:.3f} —— 属名义债券代理，"
                  f"货币贬值读数 {mac['debasement_z']:.2f} 下是他明确点名的'坏资产'")
 
@@ -186,20 +208,22 @@ def score_dalio(r, tag, mac):
     # 象限契合 (0-35): 四象限各算一遍，再按置信度加权混合，避免临界跳变
     q_uu = _ramp(ib, -0.3, 2.5, 0, 26) + _ramp(real, 0, 3, 1, 9)
     q_du = q_uu
-    q_ud = 16 + _ramp(real, 0, 3, 2, 8) + _ramp(-(r.beta or 1), -1.6, -0.6, 0, 11)
-    q_dd = _ramp(-(r.beta or 1.2), -1.4, -0.4, 2, 20) + _ramp(real, 0, 3, 2, 15)
+    q_ud = 16 + _ramp(real, 0, 3, 2, 8) + _ramp(-(_num(r.beta) or 1), -1.6, -0.6, 0, 11)
+    q_dd = _ramp(-(_num(r.beta) or 1.2), -1.4, -0.4, 2, 20) + _ramp(real, 0, 3, 2, 15)
     s_q = (W.get("up_up",0)*q_uu + W.get("down_up",0)*q_du
            + W.get("up_down",0)*q_ud + W.get("down_down",0)*q_dd)
     s_q = float(np.clip(s_q, 0, 35))
 
     s_real = _ramp(real, 0, 3, 0, 20)
 
-    # 通胀对冲 (0-25): 实测为主(18) + 黄金暴露(7)
-    s_hedge = _ramp(ib, -0.3, 2.5, 0, 18) + _ramp(gb, -0.05, 0.8, 0, 7)
+    # 通胀对冲 (0-17): 实测为主(12) + 黄金暴露(5)
+    # 通胀beta 已在象限契合里计过一次(最高26分)，这里下调以免同一个回归系数占 Dalio 分的近一半
+    s_hedge = _ramp(ib, -0.3, 2.5, 0, 12) + _ramp(gb, -0.05, 0.8, 0, 5)
 
-    # 分散化 (0-20): "圣杯是15个以上互不相关的回报流"
-    s_div = _ramp(-(r.corr_spy if r.corr_spy is not None else 0.7), -0.85, -0.20, 0, 14)
-    s_div += _ramp(abs(rb) if rb is not None else 0.05, 0.06, 0.0, 0, 6)
+    # 分散化 (0-28): "圣杯是15个以上互不相关的回报流"
+    cs = _num(r.corr_spy)
+    s_div = _ramp(-(cs if cs is not None else 0.7), -0.85, -0.20, 0, 18)
+    s_div += _ramp(abs(rb) if rb is not None else 0.05, 0.06, 0.0, 0, 10)
 
     notes.append(f"象限 {mac['quadrant']}")
     notes.append(f"实测通胀beta {ib:+.2f}" + ("（真通胀对冲）" if (ib or 0) > 1 else "") if ib is not None else "")

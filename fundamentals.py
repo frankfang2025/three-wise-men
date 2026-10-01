@@ -159,6 +159,22 @@ def _beta(y: pd.Series, x: pd.Series) -> float:
     return float(np.cov(yy, xx)[0, 1] / vx)
 
 
+def _beta_t(y: pd.Series, x: pd.Series):
+    """同 _beta，但同时返回 t 统计量 —— 周频3年仅~150个样本，点估计噪音很大，
+    下游否决门必须看显著性，不能拿一个不显著的点估计当铁证。"""
+    j = pd.concat([y, x], axis=1).dropna()
+    if len(j) < 60:
+        return None, None
+    yy, xx = j.iloc[:, 0].values, j.iloc[:, 1].values
+    vx = xx.var()
+    if vx == 0 or np.isnan(vx):
+        return None, None
+    b = float(np.cov(yy, xx)[0, 1] / vx)
+    resid = (yy - yy.mean()) - b * (xx - xx.mean())
+    se = float(np.sqrt(resid.var(ddof=2) / (vx * len(j))))
+    return b, (b / se if se > 0 else None)
+
+
 def metrics(tickers, info, px, cfh=None) -> pd.DataFrame:
     """把原始字段换算成三位框架里真正用到的指标。"""
     # 周频降噪后做因子回归
@@ -204,13 +220,13 @@ def metrics(tickers, info, px, cfh=None) -> pd.DataFrame:
             ret_1y = float(s.iloc[-1] / s.iloc[-252] - 1) if len(s) > 252 else None
             vs_200 = float(s.iloc[-1] / s.rolling(200).mean().iloc[-1] - 1)
             wr = w[t].pct_change()
-            infl_beta = _beta(wr, w_be)      # >0 = 通胀预期上行时上涨 (真通胀对冲)
+            infl_beta, infl_t = _beta_t(wr, w_be)      # >0 = 通胀预期上行时上涨 (真通胀对冲)
             oil_beta  = _beta(wr, w_oil)     # 高 = 大宗价格接受者
             gold_beta = _beta(wr, w_gld)
-            rate_beta = _beta(wr, w_rate)    # <0 = 像名义债券 (利率上行则跌)
+            rate_beta, rate_t = _beta_t(wr, w_rate)    # <0 = 像名义债券 (利率上行则跌)
         else:
             corr_spy = corr_gold = dd = ret_1y = vs_200 = None
-            infl_beta = oil_beta = gold_beta = rate_beta = None
+            infl_beta = oil_beta = gold_beta = rate_beta = infl_t = rate_t = None
 
         rows.append(dict(
             ticker=t, name=i.get("shortName") or t,
@@ -234,6 +250,7 @@ def metrics(tickers, info, px, cfh=None) -> pd.DataFrame:
             ret_1y=ret_1y, vs_200dma=vs_200,
             infl_beta=infl_beta, oil_beta=oil_beta,
             gold_beta=gold_beta, rate_beta=rate_beta,
+            infl_t=infl_t, rate_t=rate_t,
             fcf_vs_avg=fq_lva, fcf_trend=fq_trend, fcf_cv=fq_cv, fcf_pos_years=fq_pos,
         ))
     return pd.DataFrame(rows).set_index("ticker")
