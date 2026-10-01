@@ -6,7 +6,7 @@
   python3 webapp.py --port 9000  换端口
 """
 import os, sys, json, threading, subprocess, datetime as dt
-from flask import Flask, Response, jsonify, send_from_directory
+from flask import Flask, Response, jsonify, send_from_directory, request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DASH = os.path.join(HERE, "dashboard.html")
@@ -87,6 +87,44 @@ fetch('/api/status').then(r=>r.json()).then(s=>{
 """
 
 
+CHAT = """
+<div id="chat" style="background:var(--panel);border:1px solid var(--line);border-radius:11px;
+ padding:14px 16px;margin:18px 0">
+  <div style="font-weight:700;margin-bottom:8px">向三位追问</div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+    <select id="cq_t"></select>
+    <select id="cq_w"><option value="all">三人都答</option><option value="buffett">Buffett</option>
+      <option value="dimon">Dimon</option><option value="dalio">Dalio</option></select>
+  </div>
+  <div id="cq_log" style="max-height:340px;overflow:auto;white-space:pre-wrap;font-size:13px;
+   line-height:1.65;margin-bottom:8px"></div>
+  <div style="display:flex;gap:8px"><input id="cq_i" style="flex:1;padding:8px"
+   placeholder="例如：为什么 Dalio 给它的通胀对冲分偏低？"><button id="cq_b">发送</button></div>
+  <div style="font-size:11px;color:var(--dim);margin-top:6px">回答仅基于当天引擎数据与框架原文，不构成投资建议。</div>
+</div>
+<script>
+(async()=>{
+ const d=await (await fetch('/api/snapshot')).json(), sel=document.getElementById('cq_t');
+ d.ranked.forEach(r=>{const o=document.createElement('option');o.value=r.ticker;
+   o.textContent=r.ticker+' '+r.name+(r.consensus?'':' (被否决)');sel.appendChild(o);});
+ if(d.pick)sel.value=d.pick;
+ let hist=[];const log=document.getElementById('cq_log');
+ const add=(t)=>{const p=document.createElement('div');p.style.margin='6px 0';p.textContent=t;
+   log.appendChild(p);log.scrollTop=log.scrollHeight;return p;};
+ sel.onchange=()=>{hist=[];log.textContent='';};
+ document.getElementById('cq_b').onclick=async()=>{
+  const i=document.getElementById('cq_i'),q=i.value.trim();if(!q)return;i.value='';
+  add('我：'+q);const w=add('…思考中');
+  try{const r=await fetch('/api/chat',{method:'POST',headers:{'content-type':'application/json'},
+    body:JSON.stringify({ticker:sel.value,who:document.getElementById('cq_w').value,question:q,history:hist})});
+   const j=await r.json();w.textContent=j.answer||('✗ '+(j.error||'失败'));
+   if(j.answer)hist.push({role:'user',content:q},{role:'assistant',content:j.answer});
+  }catch(e){w.textContent='✗ '+e;}};
+})();
+</script>
+"""
+
+
 @app.get("/")
 def index():
     if not os.path.exists(DASH):
@@ -102,6 +140,7 @@ def index():
             pass
     # 把控制条插进 .wrap 开头，保持 dashboard.html 本身干净（镜像副本仍是纯静态页）
     html = html.replace('<div class="wrap">', '<div class="wrap">' + CONTROL, 1)
+    html = html.replace('</body>', CHAT + '</body>', 1) if '</body>' in html else html + CHAT
     html = html.replace('<span id="stamp" style="font-size:11.5px;color:var(--dim)"></span>',
                         f'<span id="stamp" style="font-size:11.5px;color:var(--dim)">{stamp}</span>', 1)
     return Response(html, mimetype="text/html")
@@ -109,7 +148,6 @@ def index():
 
 @app.post("/api/refresh")
 def refresh():
-    from flask import request
     with _lock:
         if JOB["running"]:
             return jsonify(ok=False, msg="已有任务在跑"), 409
@@ -123,6 +161,22 @@ def refresh():
 @app.get("/api/status")
 def status():
     return jsonify(JOB)
+
+
+@app.post("/api/chat")
+def chat():
+    import llm
+    b = request.get_json(silent=True) or {}
+    q, t, who = (b.get("question") or "").strip(), b.get("ticker"), b.get("who", "all")
+    if not q or not t or who not in ("all", "buffett", "dimon", "dalio"):
+        return jsonify(error="参数不完整"), 400
+    if not os.path.exists(LATEST):
+        return jsonify(error="尚无快照，请先刷新"), 400
+    try:
+        snap = json.load(open(LATEST))
+        return jsonify(answer=llm.ask(snap, t, who, q, b.get("history")))
+    except Exception as e:
+        return jsonify(error=str(e)), 500
 
 
 @app.get("/api/snapshot")
