@@ -117,7 +117,7 @@ def fcf_quality(rec):
     n = len(old_to_new)
     trend = float(np.polyfit(range(n), old_to_new, 1)[0] / abs(avg)) if avg != 0 else None
     cv = float(arr.std() / abs(avg)) if avg != 0 else None
-    pos_years = int(sum(1 for v in fcf if v > 0))
+    pos_years = int(sum(1 for v in fcf[:4] if v > 0))   # 近四年口径
     return latest_vs_avg, trend, cv, pos_years
 
 
@@ -153,7 +153,7 @@ def _beta(y: pd.Series, x: pd.Series) -> float:
     if len(j) < 60:
         return None
     yy, xx = j.iloc[:, 0].values, j.iloc[:, 1].values
-    vx = xx.var()
+    vx = xx.var(ddof=1)     # 与 np.cov 的 ddof=1 口径一致
     if vx == 0 or np.isnan(vx):
         return None
     return float(np.cov(yy, xx)[0, 1] / vx)

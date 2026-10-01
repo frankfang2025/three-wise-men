@@ -6,11 +6,12 @@
 每条门槛与权重都对应 frameworks/*.md 中该人物的原始表述，注释里标出依据。
 """
 import numpy as np
+import pandas as pd
 from universe import U
 
 # Buffett 明确回避的行业关键词 (buffett_framework.md 第6节)
 BUFFETT_EXCLUDE_INDUSTRY = [
-    "airline", "textile", "steel", "biotechnology", "drug manufacturers—specialty",
+    "airline", "textile", "steel", "biotechnology", "drug manufacturers - specialty",
     "shell companies", "mortgage", "asset management",
 ]
 
@@ -134,7 +135,7 @@ def score_dimon(r, tag, mac):
     s_theme = _ramp(raw, 0, 18, 0, 35)
     # 堡垒资产负债表
     s_bs = 0.0
-    s_bs += 15.0 if nd is None else (15 if nd <= 0 else _ramp(-nd, -4, 0, 2, 15))
+    s_bs += 7.0 if nd is None else (15 if nd <= 0 else _ramp(-nd, -4, 0, 2, 15))
     s_bs += _ramp(cr, 0.6, 2.0, 2, 10) if cr else 5
     # 估值 vs 他的 23 倍警戒线
     s_val = _ramp(-(pe or 40), -30, -10, 0, 20)
@@ -219,6 +220,7 @@ def score_all(m, mac):
         tag = U.get(t)
         if not tag:
             continue
+        r = r.astype(object).where(pd.notna(r), None)   # NaN 统一成 None，使所有 `is None` 判断生效
         if r.price is None or (isinstance(r.price,float) and np.isnan(r.price)) \
            or getattr(r, "infl_beta", None) is None:
             continue          # 数据不完整的标的不参与共识评选
