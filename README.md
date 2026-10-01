@@ -142,7 +142,7 @@ launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.threewisemen.daily.p
 ## 文件
 
 ```
-universe.py      候选池 138 只 + 主题标注（含 4 个反面样本用于验证否决逻辑）
+universe.py      候选池 136 只 + 主题标注（含 4 个反面样本用于验证否决逻辑）
 macro.py         实时宏观状态机（四象限、贬值读数、信用利差警戒）
 fundamentals.py  数据层 + 实测因子回归（通胀β/利率β/油价β/金β）+ 现金流持久性
 scoring.py       三人独立打分与否决
