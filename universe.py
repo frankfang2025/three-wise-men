@@ -141,6 +141,61 @@ add("MMC",  (T_BANK,),         real=1, infl=3, why="经纪+咨询，轻资产高
 add("AFL",  (T_BANK,),         real=1, infl=1, why="补充健康险")
 add("ALL",  (T_BANK,),         real=1, infl=2, why="车险家财险")
 
+# ---------- 【扩充】AI 与科技龙头 (此前整体缺席，导致结论系统性偏向能源/实物资产) ----------
+# circle 判断: 现金流稳定、护城河已被十年以上验证的平台型公司视为在能力圈内 (Buffett 自己是苹果最大持仓之一);
+# 技术路线仍在剧烈迭代的半导体设备/设计与网安维持 False，由数据而非偏见去检验其它两位的看法。
+add("AAPL", (T_AI,T_FORT),  real=1, infl=2, why="Buffett 长期核心持仓；生态锁定+巨额回购，现金堡垒")
+add("MSFT", (T_AI,T_FORT),  real=1, infl=2, why="云+企业软件订阅，AI 在位者，有资金有数据 (Dimon: AI 受益在位者)")
+add("GOOGL",(T_AI,T_FORT),  real=1, infl=2, why="搜索垄断+云+自研芯片，现金流充沛")
+add("AMZN", (T_AI,),        real=2, infl=2, why="云 AWS+物流网络，实物基础设施厚")
+add("META", (T_AI,),        real=1, infl=2, why="广告现金牛，AI 推荐引擎；资本开支大需检验股东盈余")
+add("NVDA", (T_AI,T_DC), circle=False, real=1, infl=2, why="AI 算力垄断；技术迭代快，估值与周期性是主要风险")
+add("AVGO", (T_AI,T_DC), circle=False, real=1, infl=2, why="定制 AI 芯片+基础设施软件")
+add("TSM",  (T_AI,T_DC), circle=False, real=3, infl=2, why="先进制程垄断；重资产实物工厂，但有地缘风险")
+add("AMAT", (T_AI,), circle=False, real=2, infl=2, why="半导体设备，周期性强")
+add("LRCX", (T_AI,), circle=False, real=2, infl=2, why="刻蚀设备，周期性强")
+add("KLAC", (T_AI,), circle=False, real=2, infl=2, why="良率检测设备，份额极高")
+add("V",    (T_FORT,T_AI),  real=0, infl=2, why="支付网络收费桥，轻资产，Buffett 曾持有")
+add("MA",   (T_FORT,T_AI),  real=0, infl=2, why="支付网络收费桥，轻资产高 ROE")
+
+# ---------- 【扩充】医疗 (必需性强、定价权来自专利/规模) ----------
+add("JNJ",  (T_FORT,),      real=1, infl=2, why="多元医疗，AAA 级资产负债表")
+add("LLY",  (T_FORT,),      real=1, infl=2, why="GLP-1 需求；估值高、竞争与政策风险")
+add("ABBV", (T_FORT,),      real=1, infl=2, why="免疫类现金牛；专利悬崖风险")
+add("MRK",  (T_FORT,),      real=1, infl=2, why="肿瘤管线；专利悬崖风险")
+add("ABT",  (T_FORT,),      real=1, infl=2, why="医疗器械+诊断，股息增长")
+add("SYK",  (T_FORT,),      real=1, infl=2, why="骨科器械，院内粘性与定价权")
+add("ISRG", (T_FORT,),      real=1, infl=2, why="手术机器人，耗材+服务经常性收入")
+add("TMO",  (T_FORT,),      real=1, infl=2, why="科研与制药供应链的“卖铲人”")
+add("ZTS",  (T_FORT,),      real=1, infl=3, why="动物保健龙头，提价能力强")
+add("UNH",  (T_FORT,),      real=1, infl=2, why="医保管理+服务，规模优势；政策监管风险")
+
+# ---------- 【扩充】消费与零售 ----------
+add("HD",   (T_FORT,),      real=2, infl=2, why="家居建材零售龙头，规模成本优势")
+add("LOW",  (T_FORT,),      real=2, infl=2, why="同上，双寡头之一")
+add("TJX",  (T_FORT,),      real=2, infl=2, why="折扣零售，经济下行期反而受益")
+add("ORLY", (T_FORT,),      real=2, infl=3, why="汽配售后，必需维修需求，提价能力强")
+add("AZO",  (T_FORT,),      real=2, infl=3, why="同上")
+add("NKE",  (T_FORT,),      real=1, infl=2, why="全球品牌；近年增长承压")
+add("BKNG", (T_FORT,),      real=0, infl=2, why="在线旅游平台，轻资产高现金流")
+add("MNST", (T_FORT,),      real=1, infl=3, why="能量饮料品牌，定价权强")
+
+# ---------- 【扩充】金融 (银行本是 Dimon 的主场，此前仅有 JPM) ----------
+add("BAC",  (T_BANK,),      real=1, infl=2, why="美国大型银行，Buffett 曾重仓")
+add("WFC",  (T_BANK,),      real=1, infl=2, why="大型银行")
+add("AXP",  (T_BANK,),      real=1, infl=2, why="Buffett 长期持仓；封闭式支付网络+高端客群")
+add("SPGI", (T_FORT,),      real=0, infl=3, why="信用评级与指数垄断，定价权极强")
+add("MCO",  (T_FORT,),      real=0, infl=3, why="信用评级双寡头，Buffett 长期持仓")
+add("CME",  (T_FORT,),      real=0, infl=2, why="衍生品交易所，网络效应")
+add("ICE",  (T_FORT,),      real=0, infl=2, why="交易所+数据")
+
+# ---------- 【扩充】工业与重型设备 ----------
+add("CAT",  (T_GRID,T_DC),  real=3, infl=2, why="重型设备，电力与基建投资受益；周期性")
+add("DE",   (T_FORT,),      real=3, infl=2, why="农机龙头，精准农业；周期性")
+add("GE",   (T_DEF,),       real=2, infl=3, why="航空发动机售后服务，长约定价")
+add("TT",   (T_GRID,T_DC),  real=2, infl=2, why="暖通制冷，数据中心散热受益")
+add("ADP",  (T_FORT,),      real=0, infl=2, why="薪资外包，客户粘性强，浮存金利息")
+
 # ---------- 明确的反面样本 (留在池中以验证否决逻辑确实生效) ----------
 add("CRM",  anti=(A_SOFT,), circle=False, real=0, infl=1, why="传统软件 —— Dimon 明确警示的 AI 颠覆对象")
 add("ORCL", anti=(A_SOFT,), circle=False, real=1, infl=1, why="传统软件+数据中心债务扩张")
