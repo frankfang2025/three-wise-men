@@ -49,3 +49,4 @@
 {"date": "2026-10-08", "run_at": "2026-10-08T02:13:55", "pick": "EOG", "action": "HOLD", "reason": "EOG 仍是三人共识下的第一名 (综合分 71.0)", "composite": 71.0, "quadrant": "增长上行 + 通胀上行（增长轴接近中性，象限判定不稳）", "ten_year": 5.2769999504089355, "n_pass": 7}
 {"date": "2026-10-09", "run_at": "2026-10-09T02:28:08", "pick": "EOG", "action": "HOLD", "reason": "EOG 仍是三人共识下的第一名 (综合分 71.1)", "composite": 71.1, "quadrant": "增长上行 + 通胀上行（增长轴接近中性，象限判定不稳）", "ten_year": 5.230999946594238, "n_pass": 7}
 {"date": "2026-10-10", "run_at": "2026-10-10T01:53:02", "pick": "EOG", "action": "HOLD", "reason": "EOG 仍是三人共识下的第一名 (综合分 71.1)", "composite": 71.1, "quadrant": "增长上行 + 通胀上行（增长轴接近中性，象限判定不稳）", "ten_year": 5.24399995803833, "n_pass": 7}
+{"date": "2026-10-13", "run_at": "2026-10-13T03:08:37", "pick": "EOG", "action": "HOLD", "reason": "EOG 仍是三人共识下的第一名 (综合分 70.2)", "composite": 70.2, "quadrant": "增长上行 + 通胀上行（增长轴接近中性，象限判定不稳）", "ten_year": 5.240000247955322, "n_pass": 7}
