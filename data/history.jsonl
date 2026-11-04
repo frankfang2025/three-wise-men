@@ -65,3 +65,4 @@
 {"date": "2026-10-30", "run_at": "2026-10-30T02:06:55", "pick": "EOG", "action": "HOLD", "reason": "EOG 仍是三人共识下的第一名 (综合分 69.7)", "composite": 69.7, "quadrant": "增长下行 + 通胀上行 (滞胀)", "ten_year": 4.988999843597412, "n_pass": 7}
 {"date": "2026-10-31", "run_at": "2026-10-31T01:45:18", "pick": "EOG", "action": "HOLD", "reason": "EOG 仍是三人共识下的第一名 (综合分 69.9)", "composite": 69.9, "quadrant": "增长下行 + 通胀上行 (滞胀)", "ten_year": 4.928999900817871, "n_pass": 8}
 {"date": "2026-11-03", "run_at": "2026-11-03T03:40:03", "pick": "EOG", "action": "HOLD", "reason": "EOG 仍通过三人检验，领先者 PSX 差距仅 0.4 分，未达换股阈值", "composite": 70.6, "quadrant": "增长下行 + 通胀上行 (滞胀)", "ten_year": 4.894000053405762, "n_pass": 10}
+{"date": "2026-11-04", "run_at": "2026-11-04T02:37:54", "pick": "EOG", "action": "HOLD", "reason": "EOG 仍通过三人检验，领先者 PSX 差距仅 0.4 分，未达换股阈值", "composite": 70.4, "quadrant": "增长下行 + 通胀上行 (滞胀)（通胀轴接近中性，象限判定不稳）", "ten_year": 4.952000141143799, "n_pass": 10}
